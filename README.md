@@ -2,13 +2,15 @@
 
 This repository contains the scripts I used for alignment and quantification of 10X Genomics Chromium scRNA-seq data using the kallisto|bustools pipeline.  
 
-10X Genomics provide their own software - [Cell Ranger](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger) - for pre-processing scRNA-seq data generated using one of their protocols. Cell Ranger is well-documented and really easy to run but it's also quite slow. Kallisto|bustools is an alternative that pseudo-aligns reads to equivalence classes (more details can be found in this [preprint](https://www.biorxiv.org/content/10.1101/673285v2) by Melsted, Booeshaghi et al., BioRxiv 2019), which really speeds up the process. According to the authors, their pipeline is "*up to 51 times faster than Cell Ranger*" and apparently it's even better for the [environment](https://twitter.com/lpachter/status/1217148183052111872?s=20)! The pipeline is modular which makes it easier to hack but the authors have also recently released [kb-python](https://github.com/pachterlab/kb_python) - a wrapper around the pipeline that really simplifies the workflow. For these reasons, I decided to use kallisto|bustools to pre-process my scRNA-seq reads but I encountered a few hurdles along the way which I've described here. Also, I found that the results that kallisto|bustools returns are a bit scarse, compared to Cell Ranger which returns too much information, so this is my Goldilocks solution!
+10X Genomics provide their own software - [Cell Ranger](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger) - for pre-processing scRNA-seq data generated using one of their protocols. Cell Ranger is well-documented and really easy to run but it's also quite slow. Kallisto|bustools is an alternative that pseudo-aligns reads to equivalence classes (more details can be found in this [preprint](https://www.biorxiv.org/content/10.1101/673285v2) by Melsted, Booeshaghi et al., BioRxiv 2019), which really speeds up the process. According to the authors, their pipeline is "*up to 51 times faster than Cell Ranger*" and apparently it's even [better for the environment](https://twitter.com/lpachter/status/1217148183052111872?s=20)! The pipeline is modular which makes it easier to hack but the authors have also recently released [kb-python](https://github.com/pachterlab/kb_python) - a wrapper around the pipeline that really simplifies the workflow. For these reasons, I decided to use kallisto|bustools to pre-process my scRNA-seq reads but I encountered a few hurdles along the way which I've described here. Also, I found that the results that kallisto|bustools returns are a bit scarse, compared to Cell Ranger which returns too much information, so this is my Goldilocks solution!
 
 <p align="center">
 
 <img src="https://www.thenational.ae/image/policy:1.677154:1511147194/image.jpg?f=16x9&q=0.6&w=1200&$p$f$q$w=70c86c9" width="300">
 
 </p>
+
+<sub>Note: To reproduce this analysis and skip my rant about how I got here, here's the [TL;DR](https://github.com/Sarah145/scRNA_pre_process#to-reproduce-this-analysis).</sub>
 
 -----
 
@@ -43,6 +45,12 @@ The Cell Ranger reference contains much fewer biotypes but includes some biotype
 ------
 
 #### Step 2: Generate a count matrix
+
+
+
+------
+
+### To reproduce this analysis...
 
 
 
