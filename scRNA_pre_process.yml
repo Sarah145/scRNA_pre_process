@@ -10,6 +10,9 @@ dependencies:
  - bioconductor-DropletUtils
  - bioconductor-SingleCellExperiment
  - r-ggplot2
+ - r-scales
+ - r-rjson
+ - r-R2HTML
  - pandas
  - numpy
  - scipy
