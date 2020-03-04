@@ -51,7 +51,7 @@ print_HTML <- function(seq_stats, cell_stats, dir, sample_id){
 	HTML('</table>', file=target)
 	HTML("</div>", file = target)
 	HTML("<div class='boxed' id='right' align='center'>", file=target)
-	HTML(paste0("<img src=", dir, "/barcode_rank.png width=90%>"), file=target)
+	HTML("<img src=./barcode_rank.png width=90%>", file=target)
 	HTML("</div>", file = target)
 	HTML("</div>", file = target)
 	HTML('<style type="text/css">

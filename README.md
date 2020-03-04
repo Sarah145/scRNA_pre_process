@@ -1,6 +1,6 @@
 ## Pre-processing scRNA-seq reads using kallisto|bustools
 
-This repository contains the scripts I used for alignment and quantification of 10X Genomics Chromium scRNA-seq data using the kallisto|bustools pipeline.  
+This repository contains the scripts I used for alignment and quantification of 10X Genomics Chromium single-cell gene expression data using the kallisto|bustools pipeline.  
 
 10X Genomics provide their own software - [Cell Ranger](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger) - for pre-processing scRNA-seq data generated using one of their protocols. Cell Ranger is well-documented and really easy to run but it's also quite slow. Kallisto|bustools is an alternative that pseudo-aligns reads to equivalence classes (more details can be found in this [preprint](https://www.biorxiv.org/content/10.1101/673285v2) by Melsted, Booeshaghi et al., BioRxiv 2019), which really speeds up the process. According to the authors, their pipeline is "*up to 51 times faster than Cell Ranger*" and apparently it's even [better for the environment](https://twitter.com/lpachter/status/1217148183052111872?s=20)! The pipeline is modular which makes it easier to hack but the authors have also recently released [kb-python](https://github.com/pachterlab/kb_python) - a wrapper around the pipeline that really simplifies the workflow. For these reasons, I decided to use kallisto|bustools to pre-process my scRNA-seq reads but I encountered a few hurdles along the way which I've described here. Also, I found that the results that kallisto|bustools returns are a bit scarse, compared to Cell Ranger which returns too much information, so this is my Goldilocks solution!
 
@@ -34,7 +34,7 @@ Given that my cells were sequenced with the 10X genomics protocol, the RNAs shou
 
 </p>
 
-The Cell Ranger reference contains much fewer biotypes but includes some biotypes that are not included in the Ensembl gtf, such as lincRNA (which is polyadenylated). The reference files that Cell Ranger uses for humans (hg38) can be downloaded from [their website](https://support.10xgenomics.com/single-cell-gene-expression/software/downloads/latest) and the gtf file can be found within the downloaded folder:  `refdata-cellranger-GRCh38-3.0.0/genes/genes.gtf` (there's also a copy of it in this repository: cellranger_genes.gtf.gz). This gtf contains annotations for ~33,500 genes which is much more reasonable so I decided to use this gtf to build my reference with `kb ref` (see [build_ref.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/build_ref.sh) script in this repository).  Ideally, the `kb ref -d` option would allow you to download a pre-built index that was built using the Cell Ranger gtf but alas...
+The Cell Ranger reference contains much fewer biotypes but includes some biotypes that are not included in the Ensembl gtf, such as lincRNA (which is polyadenylated). The reference files that Cell Ranger uses for humans (hg38) can be downloaded from [their website](https://support.10xgenomics.com/single-cell-gene-expression/software/downloads/latest) and the gtf file can be found within the downloaded folder:  `refdata-cellranger-GRCh38-3.0.0/genes/genes.gtf` (there's also a copy of it in this repository: [cellranger_genes.gtf.gz](https://github.com/Sarah145/scRNA_pre_process/blob/master/ref/cellranger_genes.gtf.gz)). This gtf contains annotations for ~33,500 genes which is much more reasonable so I decided to use this gtf to build my reference with `kb ref` (see [build_ref.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/build_ref.sh) script in this repository).  Ideally, the `kb ref -d` option would allow you to download a pre-built index that was built using the Cell Ranger gtf but alas...
 
 <p align="center">
 
@@ -50,6 +50,7 @@ I found the best way to generate a raw count matrix is to use `kb count`, which 
 
 ```bash
 Sample1_kb_out/
+├── 10xv3_whitelist.txt
 ├── counts_unfiltered
 │   ├── cells_x_genes
 │   ├── cells_x_genes.barcodes.txt
@@ -63,7 +64,14 @@ Sample1_kb_out/
 └── transcripts.txt
 ```
 
-The cells_x_genes.mtx file is (as the name would suggest) a sparse matrix of counts with cells as rows and genes as columns. The default output from Cell Ranger is the transpose of this matrix (i.e. genes x cells) and since many of the downstream tools I'll be using expect 10X data in this format, I decided to reformat the output from `kb count` to make life easier for myself. Also the cells_x_genes.genes.txt file that `kb count` outputs contains only Ensembl gene IDs and not gene symbols which is not ideal. My [kb_count.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/kb_count.sh) script runs `kb_count` and then runs a [reformat.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/reformat.R) script which mainly uses the [DropletUtils](https://bioconductor.org/packages/release/bioc/html/DropletUtils.html) R package to reformat the `kb count` output to a (genes x cells) matrix.mtx file and a genes.tsv file with gene symbols (which it gets from the t2g.txt file) instead of Ensembl gene IDs.  
+The cells_x_genes.mtx file is (as the name would suggest) a sparse matrix of counts with cells as rows and genes as columns. The default output from Cell Ranger is the transpose of this matrix (i.e. genes x cells) and since many of the downstream tools I'll be using expect 10X data in this format, I decided to reformat the output from `kb count` to make life easier for myself. Also the cells_x_genes.genes.txt file that `kb count` outputs contains only Ensembl gene IDs and not gene symbols which is not ideal. My [kb_count.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/kb_count.sh) script runs `kb_count` and then runs a [reformat.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/reformat.R) script which mainly uses the [DropletUtils](https://bioconductor.org/packages/release/bioc/html/DropletUtils.html) R package to reformat the `kb count` output to a (genes x cells) matrix.mtx file and a genes.tsv file with gene symbols (which it gets from the t2g.txt file) as well as Ensembl gene IDs. After running this script, the counts_unfiltered directory should look like this:
+
+```
+./counts_unfiltered/
+├── barcodes.tsv
+├── genes.tsv
+└── matrix.mtx
+```
 
 <sub>**Note**:  When running `kb count` you have to specify which sequencing technology (e.g. 10xv2, 10xv3) was used to sequence the cells - I've included code in my script that will automatically detect which technology was used based on the length of the R1 (26bp for v2, 28bp for v3), but this will only work for 10X reads. </sub>
 
@@ -71,63 +79,123 @@ The cells_x_genes.mtx file is (as the name would suggest) a sparse matrix of cou
 
 #### Step 3: Filter the raw count matrix
 
-The count matrix that was generated in the previous step is a raw count matrix, meaning that many of the 'cells' in this file are probably not cells but correspond to empty droplets where ambient RNA in the input cell suspension has been captured in a droplet and tagged with a barcode. Barcodes from these 'cells' will have a very low number of counts associated with them so Cell Ranger filters them out by determining an inflection point in the number of counts per barcode, above which barcodes are assumed to be tagging actual cells and not empty droplets.
+The count matrix that was generated in the previous step is a raw count matrix, meaning that many of the 'cells' in this file are probably not cells but correspond to empty droplets where ambient RNA in the input cell suspension has been captured in a droplet and tagged with a barcode. Barcodes from these 'cells' will have a very low number of counts associated with them so Cell Ranger filters them out by determining an inflection point in the number of counts per barcode, above which barcodes are assumed to be tagging actual cells and not empty droplets. DropletUtils provides another handy function - `emptyDrops()` - for determining which barcodes correspond to actual cells. [This method](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1662-y) calls cells by detecting significant deviations from the expression profile of the ambient solution and so it retains distinct cell types (such as smaller cells that have smaller libraries) that would have been discarded by other methods. For this reason I decided to use `emptyDrops()` to filter my raw count matrix. After running my [filter_counts.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/filter_counts.R) script, the results directory should contain a counts_filtered directory with the filtered matrix.mtx file and corresponding genes.tsv and barcodes.tsv files:
+
+```bash
+Sample1_kb_out/
+├── 10xv3_whitelist.txt
+├── counts_filtered
+│   ├── barcodes.tsv
+│   ├── genes.tsv
+│   └── matrix.mtx
+├── counts_unfiltered
+│   ├── barcodes.tsv
+│   ├── genes.tsv
+│   └── matrix.mtx
+├── inspect.json
+├── matrix.ec
+├── output.bus
+├── output.unfiltered.bus
+├── run_info.json
+└── transcripts.txt
+```
+
+The data is now officially pre-processed! :tada::tada:
+
+-----
+
+#### Step 4: Get a summary of the pre-processing run
+
+A feature of Cell Ranger that I particularly appreciate is that it ouputs a web_summary.html file (see [here](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/output/summary) for example) which contains summary metrics about the pre-processing run and can give you an indication of potential problems with the data. `kb count` does output a  run_info.json and inspect.json file which contain some of the information but it's not really as aesthetically pleasing. My [get_summary.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/get_summary.R) (along with [functions.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/functions.R)) script reads in the run info from `kb count`, calculates some more run statistics (including a barcode rank plot) and outputs a pretty html summary of the run.
+
+<p align="center">
+
+<img src="https://github.com/Sarah145/scRNA_pre_process/blob/master/imgs/example_html_summary.png?raw=true">
+
+</p>
 
 -----
 
 ### To reproduce this analysis...
 
-1. Clone this repository and navigate into it:
+**1.** Clone this repository and navigate into it:
 
-   ```bash
-   git clone https://github.com/Sarah145/scRNA_pre_process
-   cd scRNA_pre_process
-   ```
+```bash
+git clone https://github.com/Sarah145/scRNA_pre_process
+cd scRNA_pre_process
+```
 
-2. Create conda environment (assuming you have [Anaconda](https://www.anaconda.com/distribution/#download-section) installed) from the [scRNA_pre_process.yml](https://github.com/Sarah145/scRNA_pre_process/blob/master/scRNA_pre_process.yml) file and activate it:
+:watch: 2 mins​
 
-   ```bash
-   conda env create -f scRNA_pre_process.yml
-   conda activate scRNA_pre_process
-   ```
+**2.** Create conda environment (assuming you have [Anaconda](https://www.anaconda.com/distribution/#download-section) installed) from the [scRNA_pre_process.yml](https://github.com/Sarah145/scRNA_pre_process/blob/master/scRNA_pre_process.yml) file and activate it:
 
-   <sub> **Note:** This will take several minutes. </sub>
+```bash
+conda env create -f scRNA_pre_process.yml
+conda activate scRNA_pre_process
+```
 
-3. Download all necessary files:
+:watch: ~ 15 mins
 
-   ```bash
-   # reference files
-   cd ref
-   wget ftp://ftp.ensembl.org/pub/release-99/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
-   
-   # data files 
-   cd data
-   # copy in your own fastq files
-   cp /path/to/your/fastqs/*.fastq.gz . 
-   		## OR ## 
-   # download sample dataset from 10X (may take a while)
-   curl -O http://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_fastqs.tar
-   tar -xf pbmc_1k_v3_fastqs.tar
-   
-   cd ..
-   ```
+**3.** Download all necessary files:
 
-4. Build the transcriptome index for pseudoalignment:
+```bash
+# reference files
+cd ref
+wget ftp://ftp.ensembl.org/pub/release-99/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
 
-   ```bash
-   cd scripts
-   ./build_ref.sh
-   ```
+# data files 
+cd ../data
+# copy in your own fastq files
+cp /path/to/your/fastqs/*.fastq.gz . 
+		## OR ## 
+# download sample dataset from 10X (may take a while)
+curl -O http://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_fastqs.tar
+tar -xf pbmc_1k_v3_fastqs.tar
 
-5. Open the [kb_count.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/kb_count.sh) script (using nano or vim or whatever floats your boat) and edit the first two lines with sample information and the path to your fastq files. Make sure to specify your fastq files in R1/R2 pairs - example:
+cd ..
+```
 
-   ```
-   # Assign a sample_id
-   sample_id="Sample1"
-   
-   # Point to fastq files in R1/R2 pairs
-   fastqs=("../data/Sample_R1.fastq.gz" "../data/Sample1_L1_R2.fastq.gz" "../data/Sample1_L2_R1.fastq.gz" "../data/Sample1_L2_R2.fastq.gz") 
-   
-   ```
+:watch: ~20 mins for reference files, ~45 mins for fastq files (depends on internet conne​ction)
 
-   
+**4.** ​Build the transcriptome index for pseudoalignment :
+
+```bash
+cd scripts
+./build_ref.sh
+```
+
+:watch: ~40 mins
+
+**5.** Open the [kb_count.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/kb_count.sh) script (using nano or vim or whatever floats your boat) and edit the first two lines with sample information and the path to your fastq files. Make sure to specify your fastq files in R1/R2 pairs - example:
+
+```bash
+# Assign a sample_id
+sample_id="Sample1"
+
+# Point to fastq files in R1/R2 pairs
+fastqs=("../data/Sample_L1_R1.fastq.gz" "../data/Sample1_L1_R2.fastq.gz" "../data/Sample1_L2_R1.fastq.gz" "../data/Sample1_L2_R2.fastq.gz") 
+```
+
+Then run the script from the command line:
+
+```bash
+./kb_count.sh
+```
+
+:watch: ~1 hour (depends on size of data)
+
+**6.** Filter the raw count matrix by running the [filter_counts.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/filter_counts.R) script from the command line and specifying the sample ID:
+
+```bash
+Rscript ./filter_counts.R Sample1
+```
+
+:watch: ~15 mins
+
+**7.** Generate a html summary of the run with the [get_summary.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/get_summary.R) script:
+
+```bash
+Rscript ./get_summary Sample1
+```
+
+:watch: ~5 mins
