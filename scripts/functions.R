@@ -33,6 +33,8 @@ bc_rank_plot <- function(stats, raw_cells, filt_cells, save){
 }
 
 print_HTML <- function(seq_stats, cell_stats, dir, sample_id){
+	system(paste0('base64 ', dir, '/barcode_rank.png > ', dir, '/barcode_rank.txt'))
+        b64_bc <- readChar(paste0(dir, '/barcode_rank.txt'), file.info(paste0(dir, '/barcode_rank.txt'))$size)
 	target <- HTMLInitFile(dir, filename=paste0(sample_id, '_summary'))
 	HTML('<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">', file=target)
 	HTML("<div class='title'>", file=target)
@@ -51,7 +53,7 @@ print_HTML <- function(seq_stats, cell_stats, dir, sample_id){
 	HTML('</table>', file=target)
 	HTML("</div>", file = target)
 	HTML("<div class='boxed' id='right' align='center'>", file=target)
-	HTML("<img src=./barcode_rank.png width=90%>", file=target)
+	HTML(paste0("<img src='data:image/png;base64,", b64_bc, "' width=90%>"), file=target)
 	HTML("</div>", file = target)
 	HTML("</div>", file = target)
 	HTML('<style type="text/css">

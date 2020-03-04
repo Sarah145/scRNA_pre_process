@@ -118,6 +118,8 @@ A feature of Cell Ranger that I particularly appreciate is that it ouputs a web_
 
 ### To reproduce this analysis...
 
+The best thing about kallisto|bustools is that it requires very little computing power compared to Cell Ranger so the times below represent how long it took to run each step on my own laptop (32 RAM, running Ubuntu 18.04), using [this](https://support.10xgenomics.com/single-cell-gene-expression/datasets/3.0.0/pbmc_1k_v3) sample dataset from 10X Genomics with ~1,000 cells.
+
 **1.** Clone this repository and navigate into it:
 
 ```bash
@@ -125,11 +127,7 @@ git clone https://github.com/Sarah145/scRNA_pre_process
 cd scRNA_pre_process
 ```
 
-:watch: ~ 2 mins​
-
-
-
-
+:watch: ~ 1 min​
 
 **2.** Create conda environment (assuming you have [Anaconda](https://www.anaconda.com/distribution/#download-section) installed) from the [scRNA_pre_process.yml](https://github.com/Sarah145/scRNA_pre_process/blob/master/scRNA_pre_process.yml) file and activate it:
 
@@ -138,11 +136,7 @@ conda env create -f scRNA_pre_process.yml
 conda activate scRNA_pre_process
 ```
 
-:watch: ~ 15 mins
-
-
-
-
+:watch: ~ 2 mins
 
 **3.** Download all necessary files:
 
@@ -156,18 +150,17 @@ cd ../data
 # copy in your own fastq files
 cp /path/to/your/fastqs/*.fastq.gz . 
 		## OR ## 
-# download sample dataset from 10X (may take a while)
+# download sample dataset from 10X 
 curl -O http://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_fastqs.tar
 tar -xf pbmc_1k_v3_fastqs.tar
+# move necessary files and delete everything else
+mv pbmc_1k_v3_fastqs/*_R1* pbmc_1k_v3_fastqs/*_R2* . 
+rm -r pbmc_1k_v3_fastqs pbmc_1k_v3_fastqs.tar
 
 cd ..
 ```
 
 :watch: ~ 20 mins for reference files, ~ 45 mins for fastq files (depends on internet conne​ction)
-
-
-
-
 
 **4.** ​Build the transcriptome index for pseudoalignment :
 
@@ -176,11 +169,7 @@ cd scripts
 ./build_ref.sh
 ```
 
-:watch: ~ 40 mins
-
-
-
-
+:watch: ~ 20 mins
 
 **5.** Open the [kb_count.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/kb_count.sh) script (using nano or vim or whatever floats your boat) and edit the first two lines with sample information and the path to your fastq files. Make sure to specify your fastq files in R1/R2 pairs - example:
 
@@ -198,11 +187,7 @@ Then run the script from the command line:
 ./kb_count.sh
 ```
 
-:watch: ~ 1 hour (depends on size of data)
-
-
-
-
+:watch: ~ 20 mins (depends on size of data)
 
 **6.** Filter the raw count matrix by running the [filter_counts.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/filter_counts.R) script from the command line and specifying the sample ID:
 
@@ -210,16 +195,24 @@ Then run the script from the command line:
 Rscript ./filter_counts.R Sample1
 ```
 
-:watch: ~ 15 mins
-
-
-
-
+:watch: ~ 5 mins
 
 **7.** Generate a html summary of the run with the [get_summary.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/get_summary.R) script:
 
 ```bash
-Rscript ./get_summary Sample1
+Rscript ./get_summary.R Sample1
 ```
 
 :watch: ~ 5 mins
+
+-----
+
+#### References
+
+1. kallisto | bustools papers:
+   - Páll Melsted, A. Sina Booeshaghi, Fan Gao, Eduardo Beltrame, Lambda Lu, Kristján Eldjárn Hjorleifsson, Jase Gehring, Lior Pachter. (2019). Modular and efficient pre-processing of single-cell RNA-seq. bioRxiv; doi: https://doi.org/10.1101/673285
+   - Nicolas L Bray, Howard Pimentel, Páll Melsted, Lior Pachter. (2016). Near-optimal probabilistic RNA-seq quantification. Nature biotechnology; doi: https://doi.org/10.1038/nbt.3519
+   - Páll Melsted, Vasilis Ntranos, Lior Pachter. (2019). The barcode, UMI, set format and BUStools, Bioinformatics; doi: https://doi.org/10.1093/bioinformatics/btz279
+2. DropletUtils paper: Lun ATL, Riesenfeld S, Andrews T, Dao T, Gomes T, participants in the 1st Human Cell Atlas Jamboree, Marioni JC (2019). “EmptyDrops: distinguishing cells from empty droplets in droplet-based single-cell RNA sequencing data.” Genome Biology; doi: [10.1186/s13059-019-1662-y](https://doi.org/10.1186/s13059-019-1662-y).
+3. Cell Ranger website: https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger
+4. 
