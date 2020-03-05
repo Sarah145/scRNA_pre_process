@@ -1,7 +1,9 @@
-sample_id <- commandArgs(trailingOnly = TRUE)
 
-library(Matrix) # load libraries
-library(DropletUtils)
+sample_id <- commandArgs(trailingOnly = TRUE)
+print(paste('Working on', sample_id))
+
+library(Matrix, quietly=T) # load libraries
+library(DropletUtils, quietly=T)
 
 raw_mtx <- as(t(readMM(paste0('../data/', sample_id, '_kb_out/counts_unfiltered/cells_x_genes.mtx'))), 'CsparseMatrix') # load mtx and transpose it
 rownames(raw_mtx) <- read.csv(paste0('../data/', sample_id, '_kb_out/counts_unfiltered/cells_x_genes.genes.txt'), sep = '\t', header = F)[,1] # attach genes
@@ -13,3 +15,4 @@ gene_sym <- t2g[as.character(rownames(raw_mtx)),1] # get symbols for gene ids
 
 write10xCounts(paste0('../data/', sample_id, '_kb_out/counts_unfiltered'), gene.symbol = gene_sym, raw_mtx, overwrite = T) # write results
 
+print('Done!')

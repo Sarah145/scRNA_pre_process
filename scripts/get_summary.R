@@ -1,12 +1,15 @@
+#! /usr/bin/env Rscript
+
 sample_id <- commandArgs(trailingOnly = TRUE)
+print(paste('Working on', sample_id))
 
 # load libraries
-library(Matrix)
-library(DropletUtils)
-library(ggplot2)
-library(scales)
-library(rjson)
-library(R2HTML)
+library(Matrix, quietly=T)
+library(DropletUtils, quietly=T)
+library(ggplot2, quietly=T)
+library(scales, quietly=T)
+library(rjson, quietly=T)
+library(R2HTML, quietly=T)
 source('./functions.R') # load bc_rank_plot and print_HTML functions
 
 raw_mtx <- readMM(paste0('../data/', sample_id, '_kb_out/counts_unfiltered/matrix.mtx')) # load raw mtx
@@ -32,5 +35,5 @@ filt_cells <- read.csv(paste0('../data/', sample_id, '_kb_out/counts_filtered/ba
 bc_rank_plot(stats = stats, raw_cells = raw_cells, filt_cells = filt_cells, save = paste0('../data/', sample_id, '_kb_out/barcode_rank.png')) # create barcode rank plot png
 print_HTML(seq_stats = seq_stats, cell_stats = cell_stats, dir = paste0('../data/', sample_id, '_kb_out'), sample_id = sample_id) # output a HTML summary of the run
 
-
+print('Done!')
 
