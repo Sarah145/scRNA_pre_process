@@ -18,7 +18,7 @@ kb_stats <- c(fromJSON(file = paste0('../data/', sample_id, '_kb_out/inspect.jso
 		fromJSON(file = paste0('../data/', sample_id, '_kb_out/run_info.json'))) # load run info 
 tech <- grep('10x(.*)', strsplit(kb_stats$call, '\\s')[[1]], value=T) # determine chemistry version
 seq_stats <- data.frame(stat = c('Sequencing technology', 'Number of reads processed', '% reads pseudoaligned', # get sequencing/alignment stats 
-                                  '% reads valid after barcode correction'), 
+                                  '% reads on whitelist'), 
                         value = prettyNum(c(tech, kb_stats$n_processed, kb_stats$p_pseudoaligned, 
 				  round(kb_stats$percentageReadsOnWhitelist,2)), big.mark = ','))
 p_cnts_in_cells <- round((sum(filt_mtx)/sum(raw_mtx))*100, 2) # calculate cell stats and save to df

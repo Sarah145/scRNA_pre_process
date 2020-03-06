@@ -2,7 +2,7 @@
 
 This repository contains the scripts I used for alignment and quantification of 10X Genomics Chromium single-cell gene expression data using the kallisto|bustools pipeline.  
 
-10X Genomics provide their own software - [Cell Ranger](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger) - for pre-processing scRNA-seq data generated using one of their protocols. Cell Ranger is well-documented and really easy to run but it's also quite slow. Kallisto|bustools [[1,2](https://github.com/Sarah145/scRNA_pre_process#references)] is an alternative that pseudo-aligns reads to equivalence classes (more details can be found in this [preprint](https://www.biorxiv.org/content/10.1101/673285v2) by Melsted, Booeshaghi et al., BioRxiv 2019), which really speeds up the process. According to the authors, their pipeline is "*up to 51 times faster than Cell Ranger*" and apparently it's even [better for the environment](https://twitter.com/lpachter/status/1217148183052111872?s=20)! The pipeline is modular which makes it easier to hack but the authors have also recently released [kb-python](https://github.com/pachterlab/kb_python) - a wrapper around the pipeline that really simplifies the workflow. For these reasons, I decided to use kallisto|bustools to pre-process my scRNA-seq reads but I encountered a few hurdles along the way which I've described here. Also, I found that the results that kallisto|bustools returns are a bit scarse, compared to Cell Ranger which returns too much information, so this is my Goldilocks solution!
+10X Genomics provide their own software - [Cell Ranger](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger) - for pre-processing scRNA-seq data generated using one of their protocols. Cell Ranger is well-documented and really easy to run but it's also quite slow. Kallisto|bustools [[1,2](https://github.com/Sarah145/scRNA_pre_process#references)] is an alternative that pseudo-aligns reads to equivalence classes (more details can be found in this [preprint](https://www.biorxiv.org/content/10.1101/673285v2) by Melsted, Booeshaghi et al., BioRxiv 2019), which really speeds up the process. According to the authors, their pipeline is "*up to 51 times faster than Cell Ranger*" and apparently it's even [better for the environment](https://twitter.com/lpachter/status/1217148183052111872?s=20)! The pipeline is modular which makes it easier to hack but the authors have also recently released [kb-python](https://github.com/pachterlab/kb_python) - a wrapper around the pipeline that really simplifies the workflow. For these reasons, I decided to use kallisto|bustools to pre-process my scRNA-seq reads but I encountered a few hurdles along the way which I've described here. Also, I found that the results that kallisto|bustools returns are a bit sparse, compared to Cell Ranger which returns too much information, so this is my Goldilocks solution!
 
 <p align="center">
 
@@ -34,10 +34,9 @@ Given that my cells were sequenced with the 10X genomics protocol, the RNAs shou
 
 </p>
 
-The Cell Ranger reference contains much fewer biotypes but includes some biotypes that are not included in the Ensembl gtf, such as lincRNA (which is polyadenylated). The reference files that Cell Ranger uses for humans (hg38) can be downloaded from [their website](https://support.10xgenomics.com/single-cell-gene-expression/software/downloads/latest) and the gtf file can be found within the downloaded folder:  `refdata-cellranger-GRCh38-3.0.0/genes/genes.gtf` (there's also a copy of it in this repository: [cellranger_genes.gtf.gz](https://github.com/Sarah145/scRNA_pre_process/blob/master/ref/cellranger_genes.gtf.gz)). This gtf contains annotations for ~33,500 genes which is much more reasonable so I decided to use this gtf to build my reference with `kb ref` (see [build_ref.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/build_ref.sh) script in this repository).  Ideally, the `kb ref -d` option would allow you to download a pre-built index that was built using the Cell Ranger gtf but alas...
+The Cell Ranger reference contains much fewer biotypes but includes some biotypes that are not included in the Ensembl gtf, such as lincRNA (which is polyadenylated). The reference files that Cell Ranger uses for humans (hg38) can be downloaded from [their website](https://support.10xgenomics.com/single-cell-gene-expression/software/downloads/latest) and the gtf file can be found within the downloaded folder:  `refdata-cellranger-GRCh38-3.0.0/genes/genes.gtf` (there's also a copy of it in this repository: [cellranger_genes.gtf.gz](https://github.com/Sarah145/scRNA_pre_process/blob/master/ref/cellranger_genes.gtf.gz)). This gtf contains annotations for ~33,500 genes which is much more reasonable so I decided to use this gtf to build my reference with `kb ref` (see [build_ref.sh](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/build_ref.sh) script in this repository).  Ideally, the `kb ref -d` option would allow you to download a pre-built index that was built using the Cell Ranger gtf but...
 
 <p align="center">
-
 <img src="https://github.com/Sarah145/scRNA_pre_process/blob/master/imgs/alas.gif?raw=true">
 
 </p>
@@ -79,7 +78,7 @@ The cells_x_genes.mtx file is (as the name would suggest) a sparse matrix of cou
 
 #### Step 3: Filter the raw count matrix
 
-The count matrix that was generated in the previous step is a raw count matrix, meaning that many of the 'cells' in this file are probably not cells but correspond to empty droplets where ambient RNA in the input cell suspension has been captured in a droplet and tagged with a barcode. Barcodes from these 'cells' will have a very low number of counts associated with them so Cell Ranger filters them out by determining an inflection point in the number of counts per barcode, above which barcodes are assumed to be tagging actual cells and not empty droplets. DropletUtils provides another handy function - `emptyDrops()` - for determining which barcodes correspond to actual cells. [This method](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1662-y) calls cells by detecting significant deviations from the expression profile of the ambient solution and so it retains distinct cell types (such as smaller cells that have smaller libraries) that would have been discarded by other methods. For this reason I decided to use `emptyDrops()` to filter my raw count matrix. After running my [filter_counts.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/filter_counts.R) script, the results directory should contain a counts_filtered directory with the filtered matrix.mtx file and corresponding genes.tsv and barcodes.tsv files:
+The count matrix that was generated in the previous step is a raw count matrix, meaning that many of the 'cells' in this file are probably not cells but correspond to empty droplets where ambient RNA in the input cell suspension has been captured in a droplet and tagged with a barcode. Barcodes from these 'cells' will have a very low number of counts associated with them so one approach to filtering would be to determine an inflection point in the number of counts per barcode, above which barcodes are assumed to be tagging actual cells and not empty droplets. DropletUtils provides another handy function - `emptyDrops()` - for determining which barcodes correspond to actual cells. [This method](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1662-y) calls cells by detecting significant deviations from the expression profile of the ambient solution and so it retains distinct cell types (such as smaller cells that have smaller libraries) that would have been discarded by other methods. For this reason I decided to use `emptyDrops()` to filter my raw count matrix. After running my [filter_counts.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/filter_counts.R) script, the results directory should contain a counts_filtered directory with the filtered matrix.mtx file and corresponding genes.tsv and barcodes.tsv files:
 
 ```bash
 Sample1_kb_out/
@@ -109,7 +108,6 @@ The data is now officially pre-processed! :tada::tada:
 A feature of Cell Ranger that I particularly appreciate is that it ouputs a web_summary.html file (see [here](http://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_web_summary.html) for example) which contains summary metrics about the pre-processing run and can give you an indication of potential problems with the data. `kb count` does output a  run_info.json and inspect.json file which contain some of the information but it's not really as aesthetically pleasing. My [get_summary.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/get_summary.R) (along with [functions.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/functions.R)) script reads in the run info from `kb count`, calculates some more run statistics (including a barcode rank plot) and outputs a pretty html summary of the run.
 
 <p align="center">
-
 <img src="https://github.com/Sarah145/scRNA_pre_process/blob/master/imgs/example_html_summary.png?raw=true">
 
 </p>
@@ -118,7 +116,7 @@ A feature of Cell Ranger that I particularly appreciate is that it ouputs a web_
 
 ### To reproduce this analysis...
 
-The best thing about kallisto|bustools is that it requires very little computing power compared to Cell Ranger so the times below represent how long it took to run each step on my own laptop (32 RAM, running Ubuntu 18.04), using [this](https://support.10xgenomics.com/single-cell-gene-expression/datasets/3.0.0/pbmc_1k_v3) sample dataset from 10X Genomics with ~1,000 cells. 
+The best thing about kallisto|bustools is that it requires very little computing power compared to Cell Ranger so the times below represent how long it took to run each step on my own laptop (32G RAM, running Ubuntu 18.04), using [this](https://support.10xgenomics.com/single-cell-gene-expression/datasets/3.0.0/pbmc_1k_v3) sample dataset from 10X Genomics with ~1,000 cells. 
 
 **1.** Clone this repository and navigate into it:
 
@@ -136,7 +134,7 @@ conda env create -f scRNA_pre_process.yml
 conda activate scRNA_pre_process
 ```
 
-:watch: ~ 2 mins
+:watch: ~ 5-10 mins
 
 **3.** Download all necessary files:
 
@@ -175,10 +173,10 @@ cd scripts
 
 ```bash
 # Assign a sample_id
-sample_id="Sample1"
+sample_id="pbmc_1k_v3"
 
 # Point to fastq files in R1/R2 pairs
-fastqs=("../data/Sample_L1_R1.fastq.gz" "../data/Sample1_L1_R2.fastq.gz" "../data/Sample1_L2_R1.fastq.gz" "../data/Sample1_L2_R2.fastq.gz") 
+fastqs=("../data/pbmc_1k_v3_S1_L001_R1_001.fastq.gz" "../data/pbmc_1k_v3_S1_L001_R2_001.fastq.gz" "../data/pbmc_1k_v3_S1_L002_R1_001.fastq.gz" "../data/pbmc_1k_v3_S1_L002_R2_001.fastq.gz")
 ```
 
 Then run the script from the command line:
@@ -192,7 +190,7 @@ Then run the script from the command line:
 **6.** Filter the raw count matrix by running the [filter_counts.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/filter_counts.R) script from the command line and specifying the sample ID:
 
 ```bash
-./filter_counts.R Sample1
+./filter_counts.R pbmc_1k_v3
 ```
 
 :watch: ~ 5 mins
@@ -200,7 +198,7 @@ Then run the script from the command line:
 **7.** Generate a html summary of the run with the [get_summary.R](https://github.com/Sarah145/scRNA_pre_process/blob/master/scripts/get_summary.R) script:
 
 ```bash
-./get_summary.R Sample1
+./get_summary.R pbmc_1k_v3
 ```
 
 :watch: ~ 1 min
